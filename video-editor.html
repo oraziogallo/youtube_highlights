@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Segment Tool v2</title>
+    <title>YouTube Segment Tool v3</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -53,6 +53,10 @@
         }
 
         button:hover { opacity: 0.9; }
+
+        .btn-secondary {
+            background: #555;
+        }
 
         /* Main Layout */
         .workspace {
@@ -256,13 +260,20 @@
 </head>
 <body class="shortcuts-active">
 
+    <!-- Input Area -->
     <div class="controls-area">
         <input type="text" id="videoUrl" placeholder="Paste YouTube Link here">
         <button onclick="loadVideoFromInput()">Load Video</button>
+        
+        <!-- NEW: Load JSON Button -->
+        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Load JSON</button>
+        <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJSONFromFile(this)">
     </div>
 
+    <!-- Main Workspace -->
     <div class="workspace">
         
+        <!-- Left: Video Player -->
         <div class="video-wrapper">
             <div class="focus-warning">Click video to enable shortcuts</div>
             <div class="video-container" onclick="refocusApp()">
@@ -279,12 +290,14 @@
             </div>
         </div>
 
+        <!-- Right: Segment List -->
         <div class="segment-list-container" onclick="refocusApp()">
             <h3>Saved Highlights</h3>
             <div id="segmentList">
                 <div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press 'I' to start.</div>
             </div>
 
+            <!-- Export Button -->
             <div class="export-area">
                 <button class="btn-export" onclick="downloadJSON()">Download JSON</button>
             </div>
@@ -374,6 +387,45 @@
             } else {
                 alert("Invalid YouTube URL");
             }
+        }
+
+        // --- NEW: Load from JSON ---
+        function loadJSONFromFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data.videoId || !data.segments) {
+                        alert("Invalid JSON file format. Missing videoId or segments.");
+                        return;
+                    }
+
+                    // 1. Set Video ID & Load
+                    currentVideoId = data.videoId;
+                    document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
+                    
+                    if (player && player.loadVideoById) {
+                        player.loadVideoById(currentVideoId);
+                    }
+
+                    // 2. Restore Segments
+                    segments = data.segments;
+                    recording = false;
+                    startTime = null;
+                    
+                    renderSegments();
+                    updateStatus(`Restored ${segments.length} segments from file.`);
+                    refocusApp();
+
+                } catch (err) {
+                    alert("Error reading JSON: " + err);
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; // Reset input to allow reloading same file
         }
 
         function extractVideoID(url) {
@@ -475,19 +527,19 @@
             renderSegments();
         }
 
-        // --- NEW: Nudge Feature ---
+        // --- Nudge Feature ---
         function nudgeSegment(id, type, amount) {
             const seg = segments.find(s => s.id === id);
             if (!seg) return;
 
             if (type === 'start') {
                 const newStart = seg.start + amount;
-                if (newStart < 0) return; // Can't go below 0
-                if (newStart >= seg.end) return; // Can't go past end
+                if (newStart < 0) return; 
+                if (newStart >= seg.end) return; 
                 seg.start = newStart;
             } else {
                 const newEnd = seg.end + amount;
-                if (newEnd <= seg.start) return; // Can't go before start
+                if (newEnd <= seg.start) return; 
                 seg.end = newEnd;
             }
             renderSegments();
@@ -495,7 +547,7 @@
 
         function jumpToTime(time) {
             player.seekTo(time, true);
-            player.pauseVideo(); // We pause so they can see the exact frame
+            player.pauseVideo(); 
             refocusApp();
         }
 
@@ -561,7 +613,6 @@
                 const div = document.createElement('div');
                 div.className = 'segment-item';
                 
-                // Nudge Controls HTML
                 const startControls = `
                     <div class="time-group">
                         <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'start', -0.5)">&lt;</button>
