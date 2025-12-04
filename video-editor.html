@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Segment Tool v3</title>
+    <title>YouTube Segment Tool v3.1</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -537,10 +537,12 @@
                 if (newStart < 0) return; 
                 if (newStart >= seg.end) return; 
                 seg.start = newStart;
+                jumpToTime(newStart); // Update video immediately
             } else {
                 const newEnd = seg.end + amount;
                 if (newEnd <= seg.start) return; 
                 seg.end = newEnd;
+                jumpToTime(newEnd); // Update video immediately
             }
             renderSegments();
         }

@@ -7,40 +7,59 @@ import shutil
 import yt_dlp
 
 def main():
-    # Define paths early so they are available in the finally block
-    temp_dir = "temp_clips"
-    list_file_path = "ffmpeg_list.txt"
+    # 0. Check for command line argument for folder path
+    if len(sys.argv) > 1:
+        target_dir = sys.argv[1]
+    else:
+        target_dir = "." # Default to current directory
+
+    # Verify directory exists
+    if not os.path.isdir(target_dir):
+        print(f"❌ Error: The directory '{target_dir}' does not exist.")
+        return
+
+    # Define paths
+    temp_dir = os.path.join(target_dir, "temp_clips")
+    list_file_path = os.path.join(target_dir, "ffmpeg_list.txt")
+    output_video = os.path.join(target_dir, "Final_Highlights.mp4")
 
     try:
-        # 1. Find all JSON files
-        json_files = glob.glob("*.json")
+        # 1. Find all JSON files in the target directory
+        # We use sorted() to ensure videos are processed in alphanumeric order 
+        search_pattern = os.path.join(target_dir, "*.json")
+        json_files = sorted(glob.glob(search_pattern))
         
         if not json_files:
-            print("❌ No JSON files found in the current directory.")
+            print(f"❌ No JSON files found in directory: {target_dir}")
             return
 
-        print(f"📂 Found {len(json_files)} JSON file(s): {', '.join(json_files)}")
+        print(f"📂 Found {len(json_files)} JSON file(s) in '{target_dir}':")
+        for f in json_files:
+            print(f"   - {os.path.basename(f)}")
 
         all_segments = []
 
         # 2. Parse all JSON files
         for j_file in json_files:
-            with open(j_file, 'r') as f:
-                data = json.load(f)
-                video_id = data.get('videoId')
-                video_title = data.get('videoTitle', 'unknown_video')
-                
-                for seg in data.get('segments', []):
-                    all_segments.append({
-                        'video_id': video_id,
-                        'video_title': video_title,
-                        'start': seg['start'],
-                        'end': seg['end'],
-                        'duration': seg['end'] - seg['start']
-                    })
+            try:
+                with open(j_file, 'r') as f:
+                    data = json.load(f)
+                    video_id = data.get('videoId')
+                    video_title = data.get('videoTitle', 'unknown_video')
+                    
+                    for seg in data.get('segments', []):
+                        all_segments.append({
+                            'video_id': video_id,
+                            'video_title': video_title,
+                            'start': seg['start'],
+                            'end': seg['end'],
+                            'duration': seg['end'] - seg['start']
+                        })
+            except Exception as e:
+                print(f"   ⚠️ Skipping invalid file {os.path.basename(j_file)}: {e}")
 
         if not all_segments:
-            print("❌ No segments found inside the JSON files.")
+            print("❌ No valid segments found inside the JSON files.")
             return
 
         print(f"🎬 Found {len(all_segments)} total segments to process.")
@@ -57,7 +76,7 @@ def main():
             'no_warnings': True,
             'download_ranges': None, 
             'force_keyframes_at_cuts': True,
-            'outtmpl': f'{temp_dir}/clip_%(autonumber)03d.%(ext)s',
+            'outtmpl': os.path.join(temp_dir, 'clip_%(autonumber)03d.%(ext)s'),
         }
 
         print("\n⬇️  Starting Downloads (Only downloading specific segments)...")
@@ -68,6 +87,7 @@ def main():
             start_time = seg['start']
             end_time = seg['end']
             
+            # Create a unique filename for this segment
             output_filename = os.path.join(temp_dir, f"clip_{i:03d}.mp4")
             
             current_opts = ydl_opts.copy()
@@ -88,7 +108,8 @@ def main():
                 with yt_dlp.YoutubeDL(current_opts) as ydl:
                     ydl.download([url])
                 
-                # Verify file existence
+                # Verify file existence (yt-dlp might append .mp4 or merge formats)
+                # We look for the base file we expected
                 found_files = glob.glob(os.path.join(temp_dir, f"clip_{i:03d}*"))
                 if found_files:
                     downloaded_clips.append(found_files[0])
@@ -104,11 +125,12 @@ def main():
             
             with open(list_file_path, 'w') as f:
                 for clip in downloaded_clips:
-                    safe_path = clip.replace("'", "'\\''")
+                    # Convert to absolute path to avoid ffmpeg relative path issues
+                    abs_path = os.path.abspath(clip)
+                    # Escape absolute paths for FFmpeg
+                    safe_path = abs_path.replace("'", "'\\''")
                     f.write(f"file '{safe_path}'\n")
 
-            output_video = "Final_Highlights.mp4"
-            
             cmd = [
                 "ffmpeg", "-f", "concat", "-safe", "0", "-i", list_file_path,
                 "-c", "copy", "-y", output_video
@@ -135,7 +157,6 @@ def main():
 
     finally:
         # --- CLEANUP SECTION ---
-        # This block runs whether the script succeeds or fails
         print("\n🧹 Cleaning up temporary files...")
         
         # Remove the text list file
