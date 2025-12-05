@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Segment Tool v3.1</title>
+    <title>YouTube Segment Tool</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -256,6 +256,15 @@
             font-weight: bold;
             display: none;
         }
+
+        /* Action Link Styling */
+        .action-link {
+            color: #fff;
+            text-decoration: underline;
+            cursor: pointer;
+            margin-left: 5px;
+        }
+        .action-link:hover { color: var(--accent); }
     </style>
 </head>
 <body class="shortcuts-active">
@@ -265,7 +274,7 @@
         <input type="text" id="videoUrl" placeholder="Paste YouTube Link here">
         <button onclick="loadVideoFromInput()">Load Video</button>
         
-        <!-- NEW: Load JSON Button -->
+        <!-- Load JSON Button -->
         <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Load JSON</button>
         <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJSONFromFile(this)">
     </div>
@@ -389,7 +398,6 @@
             }
         }
 
-        // --- NEW: Load from JSON ---
         function loadJSONFromFile(input) {
             const file = input.files[0];
             if (!file) return;
@@ -425,7 +433,7 @@
                 }
             };
             reader.readAsText(file);
-            input.value = ''; // Reset input to allow reloading same file
+            input.value = ''; 
         }
 
         function extractVideoID(url) {
@@ -487,10 +495,13 @@
         function setOutPoint() {
             if (!recording) return;
             const endTime = player.getCurrentTime();
+            
+            // ERROR CHECKING WITH RECOVERY OPTION
             if (endTime <= startTime) {
-                updateStatus("Error: End time is before Start time.");
+                updateStatus("⚠️ End time is before Start. <a class='action-link' onclick='handleUndo()'>Cancel current segment</a> or scrub forward.");
                 return;
             }
+            
             const newSegment = {
                 id: Date.now(),
                 start: startTime,
@@ -520,6 +531,8 @@
             startTime = null;
             document.getElementById('recDot').classList.remove('recording');
             document.getElementById('recordingTimer').style.display = "none";
+            // Safe fallback to ensure UI looks idle if called directly
+            updateStatus("Idle");
         }
 
         function deleteSegment(id) {
@@ -537,12 +550,12 @@
                 if (newStart < 0) return; 
                 if (newStart >= seg.end) return; 
                 seg.start = newStart;
-                jumpToTime(newStart); // Update video immediately
+                jumpToTime(newStart); 
             } else {
                 const newEnd = seg.end + amount;
                 if (newEnd <= seg.start) return; 
                 seg.end = newEnd;
-                jumpToTime(newEnd); // Update video immediately
+                jumpToTime(newEnd); 
             }
             renderSegments();
         }
@@ -597,7 +610,8 @@
         }
 
         function updateStatus(msg) {
-            document.getElementById('statusText').innerText = msg;
+            // CHANGED to innerHTML to support links/buttons
+            document.getElementById('statusText').innerHTML = msg;
         }
 
         function renderSegments() {
