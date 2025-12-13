@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Segment Tool</title>
+    <title>Volleyball Video Scorer</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
             --text-color: #e0e0e0;
-            --accent: #3498db;
-            --danger: #e74c3c;
-            --success: #2ecc71;
+            --accent: #e67e22; /* Orange for Volleyball vibe */
+            --team1-color: #3498db;
+            --team2-color: #e74c3c;
             --panel-bg: #2d2d2d;
         }
 
@@ -26,21 +26,28 @@
             box-sizing: border-box;
         }
 
-        /* Top Bar: Input */
+        /* Top Bar */
         .controls-area {
             margin-bottom: 20px;
             display: flex;
             gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         input[type="text"] {
-            flex-grow: 1;
             padding: 10px;
             background: var(--panel-bg);
             border: 1px solid #444;
             color: white;
             border-radius: 4px;
         }
+        
+        .url-input { flex-grow: 1; min-width: 300px; }
+        .team-input { width: 150px; text-align: center; font-weight: bold; }
+        
+        #team1Name { border-bottom: 3px solid var(--team1-color); }
+        #team2Name { border-bottom: 3px solid var(--team2-color); }
 
         button {
             padding: 10px 20px;
@@ -51,14 +58,10 @@
             border-radius: 4px;
             font-weight: bold;
         }
-
         button:hover { opacity: 0.9; }
+        .btn-secondary { background: #555; }
 
-        .btn-secondary {
-            background: #555;
-        }
-
-        /* Main Layout */
+        /* Main Workspace */
         .workspace {
             display: flex;
             flex-grow: 1;
@@ -66,7 +69,7 @@
             overflow: hidden; 
         }
 
-        /* Left Pane: Video */
+        /* Video Area */
         .video-wrapper {
             flex: 2;
             display: flex;
@@ -82,12 +85,6 @@
             position: relative;
         }
 
-        #player {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Focus Warning Overlay (Subtle now) */
         .focus-warning {
             position: absolute;
             top: 10px;
@@ -103,12 +100,9 @@
             transition: opacity 0.3s;
             z-index: 10;
         }
-        
-        body:not(.shortcuts-active) .focus-warning {
-            opacity: 1;
-        }
+        body:not(.shortcuts-active) .focus-warning { opacity: 1; }
 
-        /* Status Bar under video */
+        /* Status Bar */
         .status-bar {
             padding: 15px;
             background: #333;
@@ -121,6 +115,12 @@
             border-radius: 8px;
         }
 
+        .live-score {
+            font-size: 1.5em;
+            font-weight: bold;
+            margin: 0 20px;
+        }
+
         .status-indicator {
             display: inline-block;
             width: 12px;
@@ -129,13 +129,9 @@
             background: #555;
             margin-right: 10px;
         }
+        .status-indicator.recording { background: var(--danger); animation: pulse 1s infinite; }
 
-        .status-indicator.recording {
-            background: var(--danger);
-            animation: pulse 1s infinite;
-        }
-
-        /* Right Pane: List */
+        /* Segment List */
         .segment-list-container {
             flex: 1;
             background: var(--panel-bg);
@@ -146,26 +142,48 @@
             flex-direction: column;
         }
 
-        h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px;}
-
         .segment-item {
             background: #3d3d3d;
             margin-bottom: 12px;
             padding: 12px;
             border-radius: 6px;
-            border-left: 4px solid var(--accent);
+            border-left: 4px solid #888; /* Default Neutral */
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 5px;
         }
+
+        /* Color code segments by winner */
+        .segment-item.winner-1 { border-left-color: var(--team1-color); }
+        .segment-item.winner-2 { border-left-color: var(--team2-color); }
 
         .segment-header {
             display: flex;
-            justify-content: space-between;
+            /* justify-content: space-between; Removed to allow score to stick right */
             align-items: center;
-            font-weight: bold;
             font-size: 0.9em;
             color: #bbb;
+        }
+        
+        .winner-toggle {
+            cursor: pointer;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .winner-toggle:hover {
+            color: white;
+            text-decoration: underline;
+        }
+
+        .score-badge {
+            background: #222;
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            margin-left: auto; /* Pushes score to the right next to X */
         }
 
         .segment-controls {
@@ -177,46 +195,18 @@
             border-radius: 4px;
         }
 
-        .time-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
         .time-display {
             font-family: monospace;
             cursor: pointer;
             padding: 2px 4px;
-            border-radius: 3px;
-            transition: background 0.2s;
         }
-        .time-display:hover { background: #444; color: white; }
+        .time-display:hover { color: var(--accent); }
 
         .nudge-btn {
-            background: #444;
-            color: #fff;
-            border: none;
-            width: 20px;
-            height: 20px;
-            font-size: 10px;
-            border-radius: 3px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            background: #444; width: 20px; height: 20px; font-size: 10px; padding: 0;
+            display: inline-flex; align-items: center; justify-content: center;
         }
-        .nudge-btn:hover { background: #666; }
 
-        .delete-btn {
-            background: transparent;
-            color: #888;
-            font-size: 1.2em;
-            padding: 0;
-            margin-left: 10px;
-        }
-        .delete-btn:hover { color: var(--danger); }
-
-        /* Keyboard Cheat Sheet */
         .shortcuts {
             margin-top: auto;
             font-size: 0.8em;
@@ -224,57 +214,30 @@
             padding-top: 10px;
             border-top: 1px solid #444;
         }
-
         .key {
-            background: #555;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
+            background: #555; color: white; padding: 2px 6px;
+            border-radius: 4px; font-family: monospace; font-weight: bold;
         }
-        
-        .export-area {
-            margin-top: 10px;
-            border-top: 1px solid #444;
-            padding-top: 10px;
-            text-align: right;
-        }
-        
-        .btn-export {
-            background: var(--success);
-            width: 100%;
-        }
+        .key.t1 { background: var(--team1-color); }
+        .key.t2 { background: var(--team2-color); }
 
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-        }
-        
-        .active-recording-text {
-            color: var(--danger);
-            font-weight: bold;
-            display: none;
-        }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .active-recording-text { color: var(--danger); font-weight: bold; display: none; }
+        .action-link { color: #fff; text-decoration: underline; cursor: pointer; margin-left: 5px; }
 
-        /* Action Link Styling */
-        .action-link {
-            color: #fff;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-        .action-link:hover { color: var(--accent); }
     </style>
 </head>
 <body class="shortcuts-active">
 
     <!-- Input Area -->
     <div class="controls-area">
-        <input type="text" id="videoUrl" placeholder="Paste YouTube Link here">
-        <button onclick="loadVideoFromInput()">Load Video</button>
+        <input type="text" id="team1Name" class="team-input" value="Home" placeholder="Team 1" oninput="renderSegments()">
+        <span style="color:#888; font-weight:bold;">VS</span>
+        <input type="text" id="team2Name" class="team-input" value="Away" placeholder="Team 2" oninput="renderSegments()">
         
-        <!-- Load JSON Button -->
+        <input type="text" id="videoUrl" class="url-input" placeholder="YouTube Link">
+        <button onclick="loadVideoFromInput()">Load</button>
+        
         <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Load JSON</button>
         <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJSONFromFile(this)">
     </div>
@@ -295,53 +258,53 @@
                     <span id="statusText">Idle</span>
                     <span id="recordingTimer" class="active-recording-text"> (IN: <span id="inTimeDisplay">0:00</span>)</span>
                 </div>
+                <!-- Live Score Display -->
+                <div class="live-score">
+                    <span style="color:var(--team1-color)" id="score1Display">0</span>
+                    -
+                    <span style="color:var(--team2-color)" id="score2Display">0</span>
+                </div>
                 <div id="currentTime">00:00</div>
             </div>
         </div>
 
         <!-- Right: Segment List -->
         <div class="segment-list-container" onclick="refocusApp()">
-            <h3>Saved Highlights</h3>
+            <h3>Plays</h3>
             <div id="segmentList">
-                <div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press 'I' to start.</div>
+                <div style="color: #666; font-style: italic; padding: 10px;">Press 'I' to start, then 1 or 2 to score.</div>
             </div>
 
-            <!-- Export Button -->
-            <div class="export-area">
-                <button class="btn-export" onclick="downloadJSON()">Download JSON</button>
-            </div>
+            <button class="btn-secondary" style="width:100%; margin-top:10px;" onclick="downloadJSON()">Download JSON</button>
 
             <div class="shortcuts">
                 <p><span class="key">Space</span> Play/Pause</p>
-                <p><span class="key">I</span> Set IN point</p>
-                <p><span class="key">O</span> Set OUT point & Save</p>
-                <p><span class="key">Bksp</span> Cancel In / Delete Last</p>
+                <p><span class="key">I</span> Start Play</p>
+                <p><span class="key t1">1</span> End + Point Team 1</p>
+                <p><span class="key t2">2</span> End + Point Team 2</p>
+                <!-- Removed O (No Score) -->
+                <p><span class="key">Bksp</span> Undo</p>
             </div>
         </div>
     </div>
 
     <script>
-        // --- State Management ---
         let player;
         let recording = false;
         let startTime = null;
         let segments = [];
         let updateInterval;
         let currentVideoId = '';
+        
+        // Running Score State
+        let currentScore1 = 0;
+        let currentScore2 = 0;
 
-        // --- Focus Management ---
-        window.addEventListener('blur', () => {
-             document.body.classList.remove('shortcuts-active');
-        });
-
-        window.addEventListener('focus', () => {
-             document.body.classList.add('shortcuts-active');
-        });
-
+        // --- Focus & Init ---
+        window.addEventListener('blur', () => document.body.classList.remove('shortcuts-active'));
+        window.addEventListener('focus', () => document.body.classList.add('shortcuts-active'));
         document.addEventListener('click', (e) => {
-            if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) {
-                refocusApp();
-            }
+            if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) refocusApp();
         });
 
         function refocusApp() {
@@ -350,7 +313,7 @@
             document.body.classList.add('shortcuts-active');
         }
 
-        // --- YouTube API Setup ---
+        // --- YouTube API ---
         var tag = document.createElement('script');
         tag.src = "https://www.youtube.com/iframe_api";
         var firstScriptTag = document.getElementsByTagName('script')[0];
@@ -358,82 +321,27 @@
 
         function onYouTubeIframeAPIReady() {
             player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: '',
-                events: { 
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange 
-                },
+                height: '100%', width: '100%', videoId: '',
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange },
                 playerVars: { 'rel': 0, 'modestbranding': 1 }
             });
         }
-
-        function onPlayerReady(event) {
-            updateInterval = setInterval(updateUI, 100);
-        }
-
+        function onPlayerReady(event) { updateInterval = setInterval(updateUI, 100); }
         function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
-                refocusApp();
-            }
+            if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) refocusApp();
         }
 
-        // --- Core Logic ---
-
+        // --- Logic ---
         function loadVideoFromInput() {
             const url = document.getElementById('videoUrl').value;
             const videoId = extractVideoID(url);
             if (videoId && player) {
                 currentVideoId = videoId;
                 player.loadVideoById(videoId);
-                segments = [];
-                recording = false;
-                startTime = null;
-                renderSegments();
-                updateStatus("Video Loaded. Ready.");
+                resetAll();
+                updateStatus("Ready.");
                 refocusApp();
-            } else {
-                alert("Invalid YouTube URL");
-            }
-        }
-
-        function loadJSONFromFile(input) {
-            const file = input.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = JSON.parse(e.target.result);
-                    if (!data.videoId || !data.segments) {
-                        alert("Invalid JSON file format. Missing videoId or segments.");
-                        return;
-                    }
-
-                    // 1. Set Video ID & Load
-                    currentVideoId = data.videoId;
-                    document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
-                    
-                    if (player && player.loadVideoById) {
-                        player.loadVideoById(currentVideoId);
-                    }
-
-                    // 2. Restore Segments
-                    segments = data.segments;
-                    recording = false;
-                    startTime = null;
-                    
-                    renderSegments();
-                    updateStatus(`Restored ${segments.length} segments from file.`);
-                    refocusApp();
-
-                } catch (err) {
-                    alert("Error reading JSON: " + err);
-                }
-            };
-            reader.readAsText(file);
-            input.value = ''; 
+            } else { alert("Invalid YouTube URL"); }
         }
 
         function extractVideoID(url) {
@@ -442,44 +350,35 @@
             return (match && match[7].length == 11) ? match[7] : false;
         }
 
-        // --- Keyboard Controls ---
+        function resetAll() {
+            segments = [];
+            recording = false;
+            startTime = null;
+            currentScore1 = 0;
+            currentScore2 = 0;
+            renderSegments();
+            updateScoreDisplay();
+        }
 
+        // --- Keyboard ---
         document.addEventListener('keydown', (e) => {
             if (e.target.tagName === 'INPUT') return;
             const key = e.key.toLowerCase();
-
             switch (key) {
-                case ' ':
-                case 'k':
-                    e.preventDefault();
-                    togglePlay();
-                    break;
-                case 'i':
-                    setInPoint();
-                    break;
-                case 'o':
-                    setOutPoint();
-                    break;
-                case 'backspace':
-                case 'delete':
-                    handleUndo();
-                    break;
-                case 'arrowleft':
-                    player.seekTo(player.getCurrentTime() - 5, true);
-                    break;
-                case 'arrowright':
-                    player.seekTo(player.getCurrentTime() + 5, true);
-                    break;
+                case ' ': case 'k': e.preventDefault(); togglePlay(); break;
+                case 'i': setInPoint(); break;
+                // Removed 'o' case
+                case '1': setOutPoint(1); break; // Team 1 wins
+                case '2': setOutPoint(2); break; // Team 2 wins
+                case 'backspace': case 'delete': handleUndo(); break;
+                case 'arrowleft': player.seekTo(player.getCurrentTime() - 5, true); break;
+                case 'arrowright': player.seekTo(player.getCurrentTime() + 5, true); break;
             }
         });
 
-        // --- Action Functions ---
-
         function togglePlay() {
             if (!player || !player.getPlayerState) return;
-            const state = player.getPlayerState();
-            if (state === 1) player.pauseVideo();
-            else player.playVideo();
+            player.getPlayerState() === 1 ? player.pauseVideo() : player.playVideo();
         }
 
         function setInPoint() {
@@ -489,40 +388,54 @@
             document.getElementById('recDot').classList.add('recording');
             document.getElementById('recordingTimer').style.display = "inline";
             document.getElementById('inTimeDisplay').innerText = formatTime(startTime);
-            updateStatus("Recording... Press 'O' to save.");
+            updateStatus("Recording... Press 1 or 2.");
         }
 
-        function setOutPoint() {
+        function setOutPoint(winner) {
             if (!recording) return;
             const endTime = player.getCurrentTime();
-            
-            // ERROR CHECKING WITH RECOVERY OPTION
             if (endTime <= startTime) {
-                updateStatus("⚠️ End time is before Start. <a class='action-link' onclick='handleUndo()'>Cancel current segment</a> or scrub forward.");
+                updateStatus("⚠️ End before Start. Scrub forward.");
                 return;
             }
+
+            // Update Logic for Score
+            let s1 = currentScore1;
+            let s2 = currentScore2;
             
+            if (winner === 1) s1++;
+            if (winner === 2) s2++;
+
             const newSegment = {
                 id: Date.now(),
                 start: startTime,
-                end: endTime
+                end: endTime,
+                winner: winner,
+                scoreState: { t1: s1, t2: s2 } // Save score AT this moment
             };
+
             segments.push(newSegment);
+            
+            // Commit new score
+            currentScore1 = s1;
+            currentScore2 = s2;
+
             cancelRecordingState();
-            updateStatus("Segment Saved!");
+            updateStatus(`Saved! Point for ${winner === 1 ? 'Team 1' : 'Team 2'}`);
             renderSegments();
+            updateScoreDisplay();
         }
 
         function handleUndo() {
             if (recording) {
                 cancelRecordingState();
-                updateStatus("Recording Cancelled.");
-            } else {
-                if (segments.length > 0) {
-                    segments.pop();
-                    renderSegments();
-                    updateStatus("Last segment deleted.");
-                }
+                updateStatus("Cancelled.");
+            } else if (segments.length > 0) {
+                // If we delete the last segment, revert score to whatever the previous segment had
+                segments.pop();
+                recalculateScores(); 
+                renderSegments();
+                updateStatus("Last segment deleted.");
             }
         }
 
@@ -531,138 +444,148 @@
             startTime = null;
             document.getElementById('recDot').classList.remove('recording');
             document.getElementById('recordingTimer').style.display = "none";
-            // Safe fallback to ensure UI looks idle if called directly
-            updateStatus("Idle");
+        }
+
+        function recalculateScores() {
+            // Re-run the score logic from the beginning of the list
+            let s1 = 0;
+            let s2 = 0;
+            segments.forEach(seg => {
+                if(seg.winner === 1) s1++;
+                if(seg.winner === 2) s2++;
+                seg.scoreState = { t1: s1, t2: s2 }; // Update state just in case
+            });
+            currentScore1 = s1;
+            currentScore2 = s2;
+            updateScoreDisplay();
         }
 
         function deleteSegment(id) {
             segments = segments.filter(s => s.id !== id);
+            recalculateScores(); // Critical: update future scores
             renderSegments();
         }
-
-        // --- Nudge Feature ---
-        function nudgeSegment(id, type, amount) {
+        
+        function toggleWinner(id) {
             const seg = segments.find(s => s.id === id);
-            if (!seg) return;
-
-            if (type === 'start') {
-                const newStart = seg.start + amount;
-                if (newStart < 0) return; 
-                if (newStart >= seg.end) return; 
-                seg.start = newStart;
-                jumpToTime(newStart); 
-            } else {
-                const newEnd = seg.end + amount;
-                if (newEnd <= seg.start) return; 
-                seg.end = newEnd;
-                jumpToTime(newEnd); 
-            }
+            if(!seg) return;
+            
+            // Cycle: 1 (Team 1) -> 2 (Team 2) -> 1
+            if(seg.winner === 1) seg.winner = 2;
+            else seg.winner = 1; // Default to 1 if it was 2 (or 0)
+            
+            recalculateScores();
             renderSegments();
         }
 
-        function jumpToTime(time) {
-            player.seekTo(time, true);
-            player.pauseVideo(); 
-            refocusApp();
-        }
-
-        // --- Export Feature ---
-
-        function downloadJSON() {
-            if (segments.length === 0) {
-                alert("No segments to export!");
-                return;
-            }
-
-            let videoTitle = "video";
-            if (player && player.getVideoData) {
-                const data = player.getVideoData();
-                if (data && data.title) {
-                    videoTitle = data.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                }
-            }
-            const filename = `${videoTitle}_highlights.json`;
-
-            const exportData = {
-                videoId: currentVideoId,
-                videoTitle: videoTitle,
-                exportedAt: new Date().toISOString(),
-                segments: segments
-            };
-
-            const jsonStr = JSON.stringify(exportData, null, 2);
-            const blob = new window.Blob([jsonStr], { type: 'application/json' });
-            
-            const link = document.createElement('a');
-            link.href = window.URL.createObjectURL(blob);
-            link.download = filename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        // --- UI Rendering ---
-
+        // --- Render ---
         function updateUI() {
             if (!player || !player.getCurrentTime) return;
-            const curr = player.getCurrentTime();
-            document.getElementById('currentTime').innerText = formatTime(curr);
+            document.getElementById('currentTime').innerText = formatTime(player.getCurrentTime());
         }
 
-        function updateStatus(msg) {
-            // CHANGED to innerHTML to support links/buttons
-            document.getElementById('statusText').innerHTML = msg;
+        function updateScoreDisplay() {
+            document.getElementById('score1Display').innerText = currentScore1;
+            document.getElementById('score2Display').innerText = currentScore2;
         }
+
+        function updateStatus(msg) { document.getElementById('statusText').innerHTML = msg; }
 
         function renderSegments() {
             const list = document.getElementById('segmentList');
             list.innerHTML = '';
-
-            if (segments.length === 0) {
-                list.innerHTML = '<div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press \'I\' to start.</div>';
-                return;
-            }
-
+            
+            // Sort by Start time
             segments.sort((a, b) => a.start - b.start);
 
             segments.forEach((seg, index) => {
                 const div = document.createElement('div');
-                div.className = 'segment-item';
+                div.className = `segment-item winner-${seg.winner}`;
                 
-                const startControls = `
-                    <div class="time-group">
-                        <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'start', -0.5)">&lt;</button>
-                        <span class="time-display" onclick="jumpToTime(${seg.start})" title="Click to view Start Frame">${formatTime(seg.start)}</span>
-                        <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'start', 0.5)">&gt;</button>
-                    </div>`;
-
-                const endControls = `
-                    <div class="time-group">
-                        <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'end', -0.5)">&lt;</button>
-                        <span class="time-display" onclick="jumpToTime(${seg.end})" title="Click to view End Frame">${formatTime(seg.end)}</span>
-                        <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'end', 0.5)">&gt;</button>
-                    </div>`;
+                let winText = "No Point"; // Fallback, shouldn't happen with strict 1/2
+                if(seg.winner === 1) winText = "Point: " + document.getElementById('team1Name').value;
+                if(seg.winner === 2) winText = "Point: " + document.getElementById('team2Name').value;
 
                 div.innerHTML = `
                     <div class="segment-header">
-                        <span>Segment #${index + 1}</span>
-                        <button class="delete-btn" onclick="deleteSegment(${seg.id})">×</button>
+                        <span class="winner-toggle" onclick="toggleWinner(${seg.id})" title="Click to change winner">
+                             #${index + 1} &bull; ${winText} ↻
+                        </span>
+                        <span class="score-badge">
+                            ${seg.scoreState.t1} - ${seg.scoreState.t2}
+                        </span>
+                        <button class="delete-btn" onclick="deleteSegment(${seg.id})" style="background:none; border:none; color:#888; cursor:pointer;">×</button>
                     </div>
                     <div class="segment-controls">
-                        ${startControls}
-                        <span style="color:#666">to</span>
-                        ${endControls}
+                        <button class="nudge-btn" onclick="nudge(${seg.id},'start',-0.5)">&lt;</button>
+                        <span class="time-display" onclick="jump(${seg.start})">${formatTime(seg.start)}</span>
+                        <button class="nudge-btn" onclick="nudge(${seg.id},'start',0.5)">&gt;</button>
+                        <span style="color:#666">-</span>
+                        <button class="nudge-btn" onclick="nudge(${seg.id},'end',-0.5)">&lt;</button>
+                        <span class="time-display" onclick="jump(${seg.end})">${formatTime(seg.end)}</span>
+                        <button class="nudge-btn" onclick="nudge(${seg.id},'end',0.5)">&gt;</button>
                     </div>
                 `;
                 list.appendChild(div);
             });
         }
 
-        function formatTime(seconds) {
-            const min = Math.floor(seconds / 60);
-            const sec = Math.floor(seconds % 60);
-            const ms = Math.floor((seconds % 1) * 10);
-            return `${min}:${sec < 10 ? '0' : ''}${sec}.${ms}`;
+        function nudge(id, type, val) {
+            let s = segments.find(x => x.id === id);
+            if(type === 'start') s.start += val;
+            else s.end += val;
+            jump(type === 'start' ? s.start : s.end);
+            renderSegments();
+        }
+        function jump(t) { player.seekTo(t, true); player.pauseVideo(); refocusApp(); }
+        
+        function formatTime(s) {
+            const m = Math.floor(s / 60);
+            const sec = Math.floor(s % 60);
+            const ms = Math.floor((s % 1) * 10);
+            return `${m}:${sec<10?'0':''}${sec}.${ms}`;
+        }
+
+        // --- JSON Export ---
+        function loadJSONFromFile(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if(data.team1) document.getElementById('team1Name').value = data.team1;
+                    if(data.team2) document.getElementById('team2Name').value = data.team2;
+                    currentVideoId = data.videoId;
+                    document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
+                    if (player) player.loadVideoById(currentVideoId);
+                    segments = data.segments;
+                    recalculateScores();
+                    renderSegments();
+                    updateStatus("Loaded JSON.");
+                } catch(err) { alert("Error: "+err); }
+            };
+            reader.readAsText(file);
+        }
+
+        function downloadJSON() {
+            if (segments.length === 0) { alert("No segments!"); return; }
+            let t1 = document.getElementById('team1Name').value;
+            let t2 = document.getElementById('team2Name').value;
+            let title = "volleyball_highlights";
+            
+            const data = {
+                videoId: currentVideoId,
+                team1: t1,
+                team2: t2,
+                segments: segments
+            };
+            
+            const blob = new Blob([JSON.stringify(data, null, 2)], {type : 'application/json'});
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${title}.json`;
+            link.click();
         }
     </script>
 </body>
