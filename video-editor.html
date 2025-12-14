@@ -323,25 +323,6 @@
         // --- State Management ---
         let ytPlayer;
         let localPlayer = document.getElementById('localPlayer');
-
-        localPlayer.addEventListener('keydown', (e) => {
-    
-            // Check if the key is one of our shortcuts
-            if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
-                
-                // 1. Kill the Native Jump (The ~19s skip)
-                e.preventDefault();
-                
-                // 2. Kill the Bubble (Prevent double-firing with your document listener)
-                e.stopPropagation();
-
-                // 3. Manually trigger your logic
-                if (e.key === 'ArrowRight') playback.nudge(2);
-                if (e.key === 'ArrowLeft') playback.nudge(-2);
-                if (e.key === ' ') playback.toggle();
-            }
-        });
-
         let currentMode = 'none'; // 'youtube' or 'local'
         let currentVideoId = '';
         let currentLocalFilename = '';
@@ -389,6 +370,8 @@
         // --- Focus Management ---
         window.addEventListener('blur', () => document.body.classList.remove('shortcuts-active'));
         window.addEventListener('focus', () => document.body.classList.add('shortcuts-active'));
+        
+        // Refocus app on generic clicks to ensure shortcuts work
         document.addEventListener('click', (e) => {
             if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) refocusApp();
         });
@@ -514,38 +497,50 @@
             return (match && match[7].length == 11) ? match[7] : false;
         }
 
-        // --- Keyboard Controls ---
+        // --- Keyboard Controls (Capture Phase - NUCLEAR FIX) ---
 
         document.addEventListener('keydown', (e) => {
-            if (e.target.tagName === 'INPUT') return;
-            const key = e.key.toLowerCase();
+            // 1. Allow typing in text boxes
+            // We check for 'INPUT' text specifically. 
+            // NOTE: We do NOT return if it is a slider (type="range") because we want to hijack arrows there too.
+            if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
 
-            switch (key) {
-                case ' ':
-                case 'k':
-                    e.preventDefault();
-                    playback.toggle();
-                    break;
-                case 'i':
-                    setInPoint();
-                    break;
-                case 'o':
-                    setOutPoint();
-                    break;
-                case 'backspace':
-                case 'delete':
-                    handleUndo();
-                    break;
-                case 'arrowleft':
-                    e.preventDefault();
-                    playback.nudge(-2);
-                    break;
-                case 'arrowright':
-                    e.preventDefault();
-                    playback.nudge(2);
-                    break;
+            const key = e.key.toLowerCase();
+            
+            // List of keys to intercept
+            const customKeys = [' ', 'k', 'i', 'o', 'backspace', 'delete', 'arrowleft', 'arrowright'];
+
+            if (customKeys.includes(key)) {
+                // 2. STOP EVERYTHING
+                // preventDefault stops browser behavior (scrolling, native video seeking)
+                // stopPropagation stops the event from bubbling down to the video player
+                e.preventDefault();
+                e.stopPropagation();
+
+                switch (key) {
+                    case ' ':
+                    case 'k':
+                        playback.toggle();
+                        break;
+                    case 'i':
+                        setInPoint();
+                        break;
+                    case 'o':
+                        setOutPoint();
+                        break;
+                    case 'backspace':
+                    case 'delete':
+                        handleUndo();
+                        break;
+                    case 'arrowleft':
+                        playback.nudge(-2);
+                        break;
+                    case 'arrowright':
+                        playback.nudge(2);
+                        break;
+                }
             }
-        });
+        }, { capture: true }); // <--- IMPORTANT: Run this listener BEFORE it reaches the video
 
         // --- Action Functions ---
 
