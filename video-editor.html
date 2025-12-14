@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Segment Tool</title>
+    <title>Hybrid Segment Tool</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -50,13 +50,13 @@
             border: none;
             border-radius: 4px;
             font-weight: bold;
+            white-space: nowrap;
         }
 
         button:hover { opacity: 0.9; }
 
-        .btn-secondary {
-            background: #555;
-        }
+        .btn-secondary { background: #555; }
+        .btn-local { background: #e67e22; }
 
         /* Main Layout */
         .workspace {
@@ -80,14 +80,19 @@
             border-radius: 8px;
             overflow: hidden;
             position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        #player {
+        #player, #localPlayer {
             width: 100%;
             height: 100%;
         }
+        
+        #localPlayer { display: none; }
 
-        /* Focus Warning Overlay (Subtle now) */
+        /* Focus Warning Overlay */
         .focus-warning {
             position: absolute;
             top: 10px;
@@ -104,9 +109,7 @@
             z-index: 10;
         }
         
-        body:not(.shortcuts-active) .focus-warning {
-            opacity: 1;
-        }
+        body:not(.shortcuts-active) .focus-warning { opacity: 1; }
 
         /* Status Bar under video */
         .status-bar {
@@ -216,7 +219,6 @@
         }
         .delete-btn:hover { color: var(--danger); }
 
-        /* Keyboard Cheat Sheet */
         .shortcuts {
             margin-top: auto;
             font-size: 0.8em;
@@ -257,7 +259,6 @@
             display: none;
         }
 
-        /* Action Link Styling */
         .action-link {
             color: #fff;
             text-decoration: underline;
@@ -269,24 +270,24 @@
 </head>
 <body class="shortcuts-active">
 
-    <!-- Input Area -->
     <div class="controls-area">
         <input type="text" id="videoUrl" placeholder="Paste YouTube Link here">
-        <button onclick="loadVideoFromInput()">Load Video</button>
+        <button onclick="loadVideoFromInput()">Load YouTube</button>
         
-        <!-- Load JSON Button -->
-        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Load JSON</button>
+        <button class="btn-local" onclick="document.getElementById('localVideoInput').click()">Load Local Video</button>
+        <input type="file" id="localVideoInput" accept="video/*" style="display:none" onchange="loadLocalVideo(this)">
+
+        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Import JSON</button>
         <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJSONFromFile(this)">
     </div>
 
-    <!-- Main Workspace -->
     <div class="workspace">
         
-        <!-- Left: Video Player -->
         <div class="video-wrapper">
             <div class="focus-warning">Click video to enable shortcuts</div>
             <div class="video-container" onclick="refocusApp()">
                 <div id="player"></div> 
+                <video id="localPlayer" controls></video>
             </div>
             
             <div class="status-bar">
@@ -299,14 +300,12 @@
             </div>
         </div>
 
-        <!-- Right: Segment List -->
         <div class="segment-list-container" onclick="refocusApp()">
             <h3>Saved Highlights</h3>
             <div id="segmentList">
                 <div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press 'I' to start.</div>
             </div>
 
-            <!-- Export Button -->
             <div class="export-area">
                 <button class="btn-export" onclick="downloadJSON()">Download JSON</button>
             </div>
@@ -322,26 +321,76 @@
 
     <script>
         // --- State Management ---
-        let player;
+        let ytPlayer;
+        let localPlayer = document.getElementById('localPlayer');
+
+        localPlayer.addEventListener('keydown', (e) => {
+    
+            // Check if the key is one of our shortcuts
+            if (['ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                
+                // 1. Kill the Native Jump (The ~19s skip)
+                e.preventDefault();
+                
+                // 2. Kill the Bubble (Prevent double-firing with your document listener)
+                e.stopPropagation();
+
+                // 3. Manually trigger your logic
+                if (e.key === 'ArrowRight') playback.nudge(2);
+                if (e.key === 'ArrowLeft') playback.nudge(-2);
+                if (e.key === ' ') playback.toggle();
+            }
+        });
+
+        let currentMode = 'none'; // 'youtube' or 'local'
+        let currentVideoId = '';
+        let currentLocalFilename = '';
+        
         let recording = false;
         let startTime = null;
         let segments = [];
         let updateInterval;
-        let currentVideoId = '';
+
+        // --- Unified Player Interface ---
+        // This object abstracts the difference between YouTube and Local Video
+        const playback = {
+            play: () => {
+                if(currentMode === 'youtube' && ytPlayer.playVideo) ytPlayer.playVideo();
+                if(currentMode === 'local') localPlayer.play();
+            },
+            pause: () => {
+                if(currentMode === 'youtube' && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+                if(currentMode === 'local') localPlayer.pause();
+            },
+            toggle: () => {
+                if(currentMode === 'youtube' && ytPlayer.getPlayerState) {
+                    const state = ytPlayer.getPlayerState();
+                    (state === 1) ? ytPlayer.pauseVideo() : ytPlayer.playVideo();
+                }
+                if(currentMode === 'local') {
+                    localPlayer.paused ? localPlayer.play() : localPlayer.pause();
+                }
+            },
+            seek: (time) => {
+                if(currentMode === 'youtube' && ytPlayer.seekTo) ytPlayer.seekTo(time, true);
+                if(currentMode === 'local') localPlayer.currentTime = time;
+            },
+            nudge: (seconds) => {
+                const now = playback.getTime();
+                playback.seek(now + seconds);
+            },
+            getTime: () => {
+                if(currentMode === 'youtube' && ytPlayer.getCurrentTime) return ytPlayer.getCurrentTime();
+                if(currentMode === 'local') return localPlayer.currentTime;
+                return 0;
+            }
+        };
 
         // --- Focus Management ---
-        window.addEventListener('blur', () => {
-             document.body.classList.remove('shortcuts-active');
-        });
-
-        window.addEventListener('focus', () => {
-             document.body.classList.add('shortcuts-active');
-        });
-
+        window.addEventListener('blur', () => document.body.classList.remove('shortcuts-active'));
+        window.addEventListener('focus', () => document.body.classList.add('shortcuts-active'));
         document.addEventListener('click', (e) => {
-            if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) {
-                refocusApp();
-            }
+            if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) refocusApp();
         });
 
         function refocusApp() {
@@ -357,14 +406,9 @@
         firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
 
         function onYouTubeIframeAPIReady() {
-            player = new YT.Player('player', {
-                height: '100%',
-                width: '100%',
-                videoId: '',
-                events: { 
-                    'onReady': onPlayerReady,
-                    'onStateChange': onPlayerStateChange 
-                },
+            ytPlayer = new YT.Player('player', {
+                height: '100%', width: '100%', videoId: '',
+                events: { 'onReady': onPlayerReady, 'onStateChange': onPlayerStateChange },
                 playerVars: { 'rel': 0, 'modestbranding': 1 }
             });
         }
@@ -372,30 +416,56 @@
         function onPlayerReady(event) {
             updateInterval = setInterval(updateUI, 100);
         }
-
         function onPlayerStateChange(event) {
-            if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) {
-                refocusApp();
-            }
+            if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) refocusApp();
         }
 
-        // --- Core Logic ---
+        // --- Loading Logic ---
+
+        function switchMode(mode) {
+            currentMode = mode;
+            segments = [];
+            recording = false;
+            startTime = null;
+            renderSegments();
+
+            if(mode === 'youtube') {
+                document.getElementById('player').style.display = 'block';
+                document.getElementById('localPlayer').style.display = 'none';
+                localPlayer.pause();
+                localPlayer.src = ""; // Unload local
+            } else {
+                document.getElementById('player').style.display = 'none';
+                document.getElementById('localPlayer').style.display = 'block';
+                if(ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+            }
+        }
 
         function loadVideoFromInput() {
             const url = document.getElementById('videoUrl').value;
             const videoId = extractVideoID(url);
-            if (videoId && player) {
+            if (videoId && ytPlayer) {
+                switchMode('youtube');
                 currentVideoId = videoId;
-                player.loadVideoById(videoId);
-                segments = [];
-                recording = false;
-                startTime = null;
-                renderSegments();
-                updateStatus("Video Loaded. Ready.");
+                ytPlayer.loadVideoById(videoId);
+                updateStatus("YouTube Video Loaded.");
                 refocusApp();
             } else {
                 alert("Invalid YouTube URL");
             }
+        }
+
+        function loadLocalVideo(input) {
+            const file = input.files[0];
+            if (!file) return;
+
+            switchMode('local');
+            currentLocalFilename = file.name;
+            const fileURL = URL.createObjectURL(file);
+            localPlayer.src = fileURL;
+            updateStatus(`Local File Loaded: ${file.name}`);
+            refocusApp();
+            input.value = ''; // Reset input
         }
 
         function loadJSONFromFile(input) {
@@ -406,26 +476,28 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (!data.videoId || !data.segments) {
-                        alert("Invalid JSON file format. Missing videoId or segments.");
-                        return;
-                    }
-
-                    // 1. Set Video ID & Load
-                    currentVideoId = data.videoId;
-                    document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
                     
-                    if (player && player.loadVideoById) {
-                        player.loadVideoById(currentVideoId);
-                    }
-
-                    // 2. Restore Segments
-                    segments = data.segments;
+                    // Restore Segments
+                    segments = data.segments || [];
                     recording = false;
                     startTime = null;
-                    
+
+                    // Handle Mode
+                    if (data.mode === 'local') {
+                        // We cannot auto-load local files due to security.
+                        // We set the mode, but user must re-select the file.
+                        switchMode('local');
+                        currentLocalFilename = data.videoFilename || "Unknown";
+                        alert(`Highlights loaded for local file: "${currentLocalFilename}"\n\nPlease use "Load Local Video" to select this file from your disk to resume working.`);
+                    } else if (data.videoId) {
+                        switchMode('youtube');
+                        currentVideoId = data.videoId;
+                        document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
+                        if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(currentVideoId);
+                    }
+
                     renderSegments();
-                    updateStatus(`Restored ${segments.length} segments from file.`);
+                    updateStatus(`Restored ${segments.length} segments.`);
                     refocusApp();
 
                 } catch (err) {
@@ -452,7 +524,7 @@
                 case ' ':
                 case 'k':
                     e.preventDefault();
-                    togglePlay();
+                    playback.toggle();
                     break;
                 case 'i':
                     setInPoint();
@@ -465,27 +537,22 @@
                     handleUndo();
                     break;
                 case 'arrowleft':
-                    player.seekTo(player.getCurrentTime() - 5, true);
+                    e.preventDefault();
+                    playback.nudge(-2);
                     break;
                 case 'arrowright':
-                    player.seekTo(player.getCurrentTime() + 5, true);
+                    e.preventDefault();
+                    playback.nudge(2);
                     break;
             }
         });
 
         // --- Action Functions ---
 
-        function togglePlay() {
-            if (!player || !player.getPlayerState) return;
-            const state = player.getPlayerState();
-            if (state === 1) player.pauseVideo();
-            else player.playVideo();
-        }
-
         function setInPoint() {
-            if (!player) return;
+            if (currentMode === 'none') return;
             recording = true;
-            startTime = player.getCurrentTime();
+            startTime = playback.getTime();
             document.getElementById('recDot').classList.add('recording');
             document.getElementById('recordingTimer').style.display = "inline";
             document.getElementById('inTimeDisplay').innerText = formatTime(startTime);
@@ -494,20 +561,18 @@
 
         function setOutPoint() {
             if (!recording) return;
-            const endTime = player.getCurrentTime();
+            const endTime = playback.getTime();
             
-            // ERROR CHECKING WITH RECOVERY OPTION
             if (endTime <= startTime) {
-                updateStatus("⚠️ End time is before Start. <a class='action-link' onclick='handleUndo()'>Cancel current segment</a> or scrub forward.");
+                updateStatus("⚠️ End time is before Start. <a class='action-link' onclick='handleUndo()'>Cancel</a> or scrub forward.");
                 return;
             }
             
-            const newSegment = {
+            segments.push({
                 id: Date.now(),
                 start: startTime,
                 end: endTime
-            };
-            segments.push(newSegment);
+            });
             cancelRecordingState();
             updateStatus("Segment Saved!");
             renderSegments();
@@ -531,7 +596,6 @@
             startTime = null;
             document.getElementById('recDot').classList.remove('recording');
             document.getElementById('recordingTimer').style.display = "none";
-            // Safe fallback to ensure UI looks idle if called directly
             updateStatus("Idle");
         }
 
@@ -540,15 +604,13 @@
             renderSegments();
         }
 
-        // --- Nudge Feature ---
         function nudgeSegment(id, type, amount) {
             const seg = segments.find(s => s.id === id);
             if (!seg) return;
 
             if (type === 'start') {
                 const newStart = seg.start + amount;
-                if (newStart < 0) return; 
-                if (newStart >= seg.end) return; 
+                if (newStart < 0 || newStart >= seg.end) return; 
                 seg.start = newStart;
                 jumpToTime(newStart); 
             } else {
@@ -561,8 +623,8 @@
         }
 
         function jumpToTime(time) {
-            player.seekTo(time, true);
-            player.pauseVideo(); 
+            playback.seek(time);
+            playback.pause(); 
             refocusApp();
         }
 
@@ -575,24 +637,25 @@
             }
 
             let videoTitle = "video";
-            if (player && player.getVideoData) {
-                const data = player.getVideoData();
-                if (data && data.title) {
-                    videoTitle = data.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-                }
+            if (currentMode === 'youtube' && ytPlayer.getVideoData) {
+                videoTitle = ytPlayer.getVideoData().title;
+            } else if (currentMode === 'local') {
+                videoTitle = currentLocalFilename;
             }
-            const filename = `${videoTitle}_highlights.json`;
+
+            const cleanTitle = videoTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            const filename = `${cleanTitle}_highlights.json`;
 
             const exportData = {
+                mode: currentMode,
                 videoId: currentVideoId,
+                videoFilename: currentLocalFilename,
                 videoTitle: videoTitle,
                 exportedAt: new Date().toISOString(),
                 segments: segments
             };
 
-            const jsonStr = JSON.stringify(exportData, null, 2);
-            const blob = new window.Blob([jsonStr], { type: 'application/json' });
-            
+            const blob = new window.Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
             const link = document.createElement('a');
             link.href = window.URL.createObjectURL(blob);
             link.download = filename;
@@ -604,13 +667,11 @@
         // --- UI Rendering ---
 
         function updateUI() {
-            if (!player || !player.getCurrentTime) return;
-            const curr = player.getCurrentTime();
+            const curr = playback.getTime();
             document.getElementById('currentTime').innerText = formatTime(curr);
         }
 
         function updateStatus(msg) {
-            // CHANGED to innerHTML to support links/buttons
             document.getElementById('statusText').innerHTML = msg;
         }
 
@@ -632,14 +693,14 @@
                 const startControls = `
                     <div class="time-group">
                         <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'start', -0.5)">&lt;</button>
-                        <span class="time-display" onclick="jumpToTime(${seg.start})" title="Click to view Start Frame">${formatTime(seg.start)}</span>
+                        <span class="time-display" onclick="jumpToTime(${seg.start})" title="Jump to Start">${formatTime(seg.start)}</span>
                         <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'start', 0.5)">&gt;</button>
                     </div>`;
 
                 const endControls = `
                     <div class="time-group">
                         <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'end', -0.5)">&lt;</button>
-                        <span class="time-display" onclick="jumpToTime(${seg.end})" title="Click to view End Frame">${formatTime(seg.end)}</span>
+                        <span class="time-display" onclick="jumpToTime(${seg.end})" title="Jump to End">${formatTime(seg.end)}</span>
                         <button class="nudge-btn" onclick="nudgeSegment(${seg.id}, 'end', 0.5)">&gt;</button>
                     </div>`;
 
