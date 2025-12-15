@@ -312,9 +312,10 @@
 
             <div class="shortcuts">
                 <p><span class="key">Space</span> Play/Pause</p>
-                <p><span class="key">I</span> Set IN point</p>
-                <p><span class="key">O</span> Set OUT point & Save</p>
+                <p><span class="key">Z</span> Set IN point</p>
+                <p><span class="key">X</span> Set OUT point & Save</p>
                 <p><span class="key">Bksp</span> Cancel In / Delete Last</p>
+                <p><span class="key">↑/↓</span> Skip 5s</p>
             </div>
         </div>
     </div>
@@ -497,23 +498,20 @@
             return (match && match[7].length == 11) ? match[7] : false;
         }
 
-        // --- Keyboard Controls (Capture Phase - NUCLEAR FIX) ---
-
         document.addEventListener('keydown', (e) => {
             // 1. Allow typing in text boxes
-            // We check for 'INPUT' text specifically. 
-            // NOTE: We do NOT return if it is a slider (type="range") because we want to hijack arrows there too.
             if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
 
             const key = e.key.toLowerCase();
             
-            // List of keys to intercept
-            const customKeys = [' ', 'k', 'i', 'o', 'backspace', 'delete', 'arrowleft', 'arrowright'];
+            // UPDATED List of keys to intercept (Added z, x, arrowup, arrowdown)
+            const customKeys = [
+                ' ', 'k', 'z', 'x', 'backspace', 'delete', 
+                'arrowleft', 'arrowright', 'arrowup', 'arrowdown'
+            ];
 
             if (customKeys.includes(key)) {
                 // 2. STOP EVERYTHING
-                // preventDefault stops browser behavior (scrolling, native video seeking)
-                // stopPropagation stops the event from bubbling down to the video player
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -522,10 +520,10 @@
                     case 'k':
                         playback.toggle();
                         break;
-                    case 'i':
+                    case 'z': // CHANGED from 'i'
                         setInPoint();
                         break;
-                    case 'o':
+                    case 'x': // CHANGED from 'o'
                         setOutPoint();
                         break;
                     case 'backspace':
@@ -533,14 +531,20 @@
                         handleUndo();
                         break;
                     case 'arrowleft':
-                        playback.nudge(-3);
+                        playback.nudge(-2);
                         break;
                     case 'arrowright':
-                        playback.nudge(3);
+                        playback.nudge(2);
+                        break;
+                    case 'arrowup':   // NEW: Long Jump Forward
+                        playback.nudge(5);
+                        break;
+                    case 'arrowdown': // NEW: Long Jump Backward
+                        playback.nudge(-5);
                         break;
                 }
             }
-        }, { capture: true }); // <--- IMPORTANT: Run this listener BEFORE it reaches the video
+        }, { capture: true });
 
         // --- Action Functions ---
 
