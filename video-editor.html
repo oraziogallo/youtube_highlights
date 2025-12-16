@@ -8,10 +8,15 @@
         :root {
             --bg-color: #1a1a1a;
             --text-color: #e0e0e0;
-            --accent: #3498db;
-            --danger: #e74c3c;
-            --success: #2ecc71;
             --panel-bg: #2d2d2d;
+            
+            /* Professional Button Colors */
+            --btn-default: #3a3a3a;
+            --btn-hover: #4a4a4a;
+            --btn-blue: #007acc;  /* VS Code Blue */
+            --btn-green: #2ea043; /* GitHub Green */
+            --btn-orange: #d27b1a; 
+            --btn-red: #da3633;
         }
 
         body {
@@ -26,258 +31,122 @@
             box-sizing: border-box;
         }
 
-        /* Top Bar: Input */
-        .controls-area {
-            margin-bottom: 20px;
-            display: flex;
-            gap: 10px;
+        /* --- Updated Button Styles --- */
+        button {
+            padding: 8px 16px;
+            cursor: pointer;
+            background: var(--btn-default);
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s, border-color 0.2s;
         }
+        button:hover { background: var(--btn-hover); border-color: #777; }
+        button:active { transform: translateY(1px); }
+
+        .btn-blue { background: var(--btn-blue); border-color: var(--btn-blue); }
+        .btn-blue:hover { background: #0062a3; }
+
+        .btn-local { background: var(--btn-orange); border-color: var(--btn-orange); }
+        .btn-local:hover { background: #b06512; }
+
+        .btn-export { background: var(--btn-green); border-color: var(--btn-green); width: 100%; }
+        .btn-export:hover { background: #26893a; }
+
+        .delete-btn {
+            background: transparent; border: none; color: #888; font-size: 1.2em; padding: 0; margin-left: 10px;
+        }
+        .delete-btn:hover { background: transparent; color: var(--btn-red); }
+
+        .nudge-btn {
+            background: #444; border: 1px solid #555; width: 22px; height: 22px; 
+            padding: 0; font-size: 10px; border-radius: 3px;
+        }
+
+        /* --- Existing Layout Styles --- */
+        .controls-area { margin-bottom: 20px; display: flex; gap: 10px; }
 
         input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            background: var(--panel-bg);
-            border: 1px solid #444;
-            color: white;
-            border-radius: 4px;
+            flex-grow: 1; padding: 10px; background: var(--panel-bg);
+            border: 1px solid #444; color: white; border-radius: 4px;
         }
 
-        button {
-            padding: 10px 20px;
-            cursor: pointer;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            white-space: nowrap;
-        }
+        .workspace { display: flex; flex-grow: 1; gap: 20px; overflow: hidden; }
 
-        button:hover { opacity: 0.9; }
-
-        .btn-secondary { background: #555; }
-        .btn-local { background: #e67e22; }
-
-        /* Main Layout */
-        .workspace {
-            display: flex;
-            flex-grow: 1;
-            gap: 20px;
-            overflow: hidden; 
-        }
-
-        /* Left Pane: Video */
-        .video-wrapper {
-            flex: 2;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
+        .video-wrapper { flex: 2; display: flex; flex-direction: column; position: relative; }
 
         .video-container {
-            flex-grow: 1;
-            background: black;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            flex-grow: 1; background: black; border-radius: 8px; overflow: hidden;
+            position: relative; display: flex; align-items: center; justify-content: center;
+            border: 1px solid #333;
         }
 
-        #player, #localPlayer {
-            width: 100%;
-            height: 100%;
-        }
-        
+        #player, #localPlayer { width: 100%; height: 100%; }
         #localPlayer { display: none; }
 
-        /* Focus Warning Overlay */
-        .focus-warning {
-            position: absolute;
-            top: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.6);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            color: #ddd;
-            pointer-events: none;
-            opacity: 0;
-            transition: opacity 0.3s;
-            z-index: 10;
-        }
-        
-        body:not(.shortcuts-active) .focus-warning { opacity: 1; }
-
-        /* Status Bar under video */
         .status-bar {
-            padding: 15px;
-            background: #333;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-family: monospace;
-            font-size: 1.1em;
-            margin-top: 10px;
-            border-radius: 8px;
+            padding: 12px 15px; background: #252525; display: flex; justify-content: space-between;
+            align-items: center; font-family: monospace; font-size: 1.1em; margin-top: 10px;
+            border-radius: 6px; border: 1px solid #333;
         }
 
         .status-indicator {
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-            background: #555;
-            margin-right: 10px;
+            display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+            background: #555; margin-right: 10px;
         }
+        .status-indicator.recording { background: var(--btn-red); animation: pulse 1s infinite; }
 
-        .status-indicator.recording {
-            background: var(--danger);
-            animation: pulse 1s infinite;
-        }
-
-        /* Right Pane: List */
         .segment-list-container {
-            flex: 1;
-            background: var(--panel-bg);
-            border-radius: 8px;
-            padding: 15px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
+            flex: 1; background: var(--panel-bg); border-radius: 8px; padding: 15px;
+            overflow-y: auto; display: flex; flex-direction: column; border: 1px solid #333;
         }
 
-        h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px;}
+        h3 { margin-top: 0; border-bottom: 1px solid #444; padding-bottom: 10px; color: #ccc; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; }
 
         .segment-item {
-            background: #3d3d3d;
-            margin-bottom: 12px;
-            padding: 12px;
-            border-radius: 6px;
-            border-left: 4px solid var(--accent);
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+            background: #363636; margin-bottom: 10px; padding: 10px; border-radius: 4px;
+            border-left: 3px solid var(--btn-blue); display: flex; flex-direction: column; gap: 8px;
         }
 
-        .segment-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-weight: bold;
-            font-size: 0.9em;
-            color: #bbb;
-        }
-
-        .segment-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #222;
-            padding: 8px;
-            border-radius: 4px;
-        }
-
-        .time-group {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
+        .segment-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 0.85rem; color: #bbb; }
+        .segment-controls { display: flex; justify-content: space-between; align-items: center; background: #222; padding: 6px; border-radius: 4px; }
+        .time-group { display: flex; align-items: center; gap: 5px; }
+        
         .time-display {
-            font-family: monospace;
-            cursor: pointer;
-            padding: 2px 4px;
-            border-radius: 3px;
-            transition: background 0.2s;
+            font-family: monospace; cursor: pointer; padding: 2px 6px; border-radius: 3px; 
+            color: var(--btn-blue); font-size: 0.9em;
         }
         .time-display:hover { background: #444; color: white; }
 
-        .nudge-btn {
-            background: #444;
-            color: #fff;
-            border: none;
-            width: 20px;
-            height: 20px;
-            font-size: 10px;
-            border-radius: 3px;
-            padding: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .nudge-btn:hover { background: #666; }
-
-        .delete-btn {
-            background: transparent;
-            color: #888;
-            font-size: 1.2em;
-            padding: 0;
-            margin-left: 10px;
-        }
-        .delete-btn:hover { color: var(--danger); }
-
-        .shortcuts {
-            margin-top: auto;
-            font-size: 0.8em;
-            color: #888;
-            padding-top: 10px;
-            border-top: 1px solid #444;
-        }
-
-        .key {
-            background: #555;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: monospace;
-        }
+        .shortcuts { margin-top: auto; font-size: 0.8em; color: #888; padding-top: 10px; border-top: 1px solid #444; }
+        .key { background: #444; color: white; padding: 2px 6px; border-radius: 4px; font-family: monospace; border-bottom: 1px solid #222; }
+        .export-area { margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
         
-        .export-area {
-            margin-top: 10px;
-            border-top: 1px solid #444;
-            padding-top: 10px;
-            text-align: right;
+        .focus-warning {
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+            background: rgba(0,0,0,0.7); padding: 5px 15px; border-radius: 20px;
+            font-size: 0.8rem; color: #fff; pointer-events: none; opacity: 0;
+            transition: opacity 0.3s; z-index: 10;
         }
-        
-        .btn-export {
-            background: var(--success);
-            width: 100%;
-        }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
-        }
-        
-        .active-recording-text {
-            color: var(--danger);
-            font-weight: bold;
-            display: none;
-        }
-
-        .action-link {
-            color: #fff;
-            text-decoration: underline;
-            cursor: pointer;
-            margin-left: 5px;
-        }
-        .action-link:hover { color: var(--accent); }
+        body:not(.shortcuts-active) .focus-warning { opacity: 1; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+        .active-recording-text { color: var(--btn-red); font-weight: bold; display: none; }
+        .action-link { color: #fff; text-decoration: underline; cursor: pointer; margin-left: 5px; }
+        .action-link:hover { color: var(--btn-blue); }
     </style>
 </head>
 <body class="shortcuts-active">
 
     <div class="controls-area">
-        <input type="text" id="videoUrl" placeholder="Paste YouTube Link here">
-        <button onclick="loadVideoFromInput()">Load YouTube</button>
+        <input type="text" id="videoUrl" placeholder="Paste YouTube Link or Load Local File">
+        <button class="btn-blue" onclick="loadVideoFromInput()">Load YouTube</button>
         
         <button class="btn-local" onclick="document.getElementById('localVideoInput').click()">Load Local Video</button>
         <input type="file" id="localVideoInput" accept="video/*" style="display:none" onchange="loadLocalVideo(this)">
 
-        <button class="btn-secondary" onclick="document.getElementById('fileInput').click()">Import JSON</button>
+        <button onclick="document.getElementById('fileInput').click()">Import JSON</button>
         <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadJSONFromFile(this)">
     </div>
 
@@ -303,7 +172,7 @@
         <div class="segment-list-container" onclick="refocusApp()">
             <h3>Saved Highlights</h3>
             <div id="segmentList">
-                <div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press 'I' to start.</div>
+                <div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press 'Z' to start.</div>
             </div>
 
             <div class="export-area">
@@ -315,7 +184,7 @@
                 <p><span class="key">Z</span> Set IN point</p>
                 <p><span class="key">X</span> Set OUT point & Save</p>
                 <p><span class="key">Bksp</span> Cancel In / Delete Last</p>
-                <p><span class="key">↑/↓</span> Skip 5s</p>
+                <p><span class="key">↑/↓</span> Skip 5s &nbsp; <span class="key">←/→</span> Skip 2s</p>
             </div>
         </div>
     </div>
@@ -334,7 +203,6 @@
         let updateInterval;
 
         // --- Unified Player Interface ---
-        // This object abstracts the difference between YouTube and Local Video
         const playback = {
             play: () => {
                 if(currentMode === 'youtube' && ytPlayer.playVideo) ytPlayer.playVideo();
@@ -371,8 +239,6 @@
         // --- Focus Management ---
         window.addEventListener('blur', () => document.body.classList.remove('shortcuts-active'));
         window.addEventListener('focus', () => document.body.classList.add('shortcuts-active'));
-        
-        // Refocus app on generic clicks to ensure shortcuts work
         document.addEventListener('click', (e) => {
             if(e.target.tagName !== 'INPUT' && !e.target.closest('button')) refocusApp();
         });
@@ -397,15 +263,12 @@
             });
         }
 
-        function onPlayerReady(event) {
-            updateInterval = setInterval(updateUI, 100);
-        }
+        function onPlayerReady(event) { updateInterval = setInterval(updateUI, 100); }
         function onPlayerStateChange(event) {
             if (event.data === YT.PlayerState.PLAYING || event.data === YT.PlayerState.PAUSED) refocusApp();
         }
 
         // --- Loading Logic ---
-
         function switchMode(mode) {
             currentMode = mode;
             segments = [];
@@ -417,7 +280,7 @@
                 document.getElementById('player').style.display = 'block';
                 document.getElementById('localPlayer').style.display = 'none';
                 localPlayer.pause();
-                localPlayer.src = ""; // Unload local
+                localPlayer.src = ""; 
             } else {
                 document.getElementById('player').style.display = 'none';
                 document.getElementById('localPlayer').style.display = 'block';
@@ -445,11 +308,14 @@
 
             switchMode('local');
             currentLocalFilename = file.name;
+            // Auto-fill title to input for path editing
+            document.getElementById('videoUrl').value = file.name;
+            
             const fileURL = URL.createObjectURL(file);
             localPlayer.src = fileURL;
             updateStatus(`Local File Loaded: ${file.name}`);
             refocusApp();
-            input.value = ''; // Reset input
+            input.value = ''; 
         }
 
         function loadJSONFromFile(input) {
@@ -460,33 +326,26 @@
             reader.onload = function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
-                    
-                    // Restore Segments
                     segments = data.segments || [];
                     recording = false;
                     startTime = null;
 
-                    // Handle Mode
                     if (data.mode === 'local') {
-                        // We cannot auto-load local files due to security.
-                        // We set the mode, but user must re-select the file.
                         switchMode('local');
-                        currentLocalFilename = data.videoFilename || "Unknown";
-                        alert(`Highlights loaded for local file: "${currentLocalFilename}"\n\nPlease use "Load Local Video" to select this file from your disk to resume working.`);
+                        currentLocalFilename = data.videoTitle || "Unknown";
+                        // Restore path if present
+                        document.getElementById('videoUrl').value = data.videoPath || data.videoFilename || "";
+                        alert(`Highlights loaded for: "${currentLocalFilename}"\nPlease load the video file to resume.`);
                     } else if (data.videoId) {
                         switchMode('youtube');
                         currentVideoId = data.videoId;
                         document.getElementById('videoUrl').value = "https://www.youtube.com/watch?v=" + currentVideoId;
                         if (ytPlayer && ytPlayer.loadVideoById) ytPlayer.loadVideoById(currentVideoId);
                     }
-
                     renderSegments();
                     updateStatus(`Restored ${segments.length} segments.`);
                     refocusApp();
-
-                } catch (err) {
-                    alert("Error reading JSON: " + err);
-                }
+                } catch (err) { alert("Error reading JSON: " + err); }
             };
             reader.readAsText(file);
             input.value = ''; 
@@ -498,20 +357,19 @@
             return (match && match[7].length == 11) ? match[7] : false;
         }
 
+        // --- Keyboard Controls (Capture Phase - UPDATED with Z/X/Arrows) ---
         document.addEventListener('keydown', (e) => {
-            // 1. Allow typing in text boxes
             if (e.target.tagName === 'INPUT' && e.target.type === 'text') return;
 
             const key = e.key.toLowerCase();
             
-            // UPDATED List of keys to intercept (Added z, x, arrowup, arrowdown)
+            // Added Z, X, ArrowUp, ArrowDown
             const customKeys = [
                 ' ', 'k', 'z', 'x', 'backspace', 'delete', 
                 'arrowleft', 'arrowright', 'arrowup', 'arrowdown'
             ];
 
             if (customKeys.includes(key)) {
-                // 2. STOP EVERYTHING
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -520,10 +378,10 @@
                     case 'k':
                         playback.toggle();
                         break;
-                    case 'z': // CHANGED from 'i'
+                    case 'z': // New IN key
                         setInPoint();
                         break;
-                    case 'x': // CHANGED from 'o'
+                    case 'x': // New OUT key
                         setOutPoint();
                         break;
                     case 'backspace':
@@ -536,10 +394,10 @@
                     case 'arrowright':
                         playback.nudge(2);
                         break;
-                    case 'arrowup':   // NEW: Long Jump Forward
+                    case 'arrowup':   // Long Jump Fwd
                         playback.nudge(5);
                         break;
-                    case 'arrowdown': // NEW: Long Jump Backward
+                    case 'arrowdown': // Long Jump Back
                         playback.nudge(-5);
                         break;
                 }
@@ -547,7 +405,6 @@
         }, { capture: true });
 
         // --- Action Functions ---
-
         function setInPoint() {
             if (currentMode === 'none') return;
             recording = true;
@@ -555,23 +412,17 @@
             document.getElementById('recDot').classList.add('recording');
             document.getElementById('recordingTimer').style.display = "inline";
             document.getElementById('inTimeDisplay').innerText = formatTime(startTime);
-            updateStatus("Recording... Press 'O' to save.");
+            updateStatus("Recording... Press 'X' to save.");
         }
 
         function setOutPoint() {
             if (!recording) return;
             const endTime = playback.getTime();
-            
             if (endTime <= startTime) {
-                updateStatus("⚠️ End time is before Start. <a class='action-link' onclick='handleUndo()'>Cancel</a> or scrub forward.");
+                updateStatus("⚠️ End time is before Start.");
                 return;
             }
-            
-            segments.push({
-                id: Date.now(),
-                start: startTime,
-                end: endTime
-            });
+            segments.push({ id: Date.now(), start: startTime, end: endTime });
             cancelRecordingState();
             updateStatus("Segment Saved!");
             renderSegments();
@@ -606,7 +457,6 @@
         function nudgeSegment(id, type, amount) {
             const seg = segments.find(s => s.id === id);
             if (!seg) return;
-
             if (type === 'start') {
                 const newStart = seg.start + amount;
                 if (newStart < 0 || newStart >= seg.end) return; 
@@ -628,18 +478,16 @@
         }
 
         // --- Export Feature ---
-
         function downloadJSON() {
-            if (segments.length === 0) {
-                alert("No segments to export!");
-                return;
-            }
+            if (segments.length === 0) { alert("No segments to export!"); return; }
 
             let videoTitle = "video";
+            let videoPathOrId = document.getElementById('videoUrl').value;
+
             if (currentMode === 'youtube' && ytPlayer.getVideoData) {
                 videoTitle = ytPlayer.getVideoData().title;
             } else if (currentMode === 'local') {
-                videoTitle = currentLocalFilename;
+                videoTitle = videoPathOrId || currentLocalFilename;
             }
 
             const cleanTitle = videoTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
@@ -647,8 +495,8 @@
 
             const exportData = {
                 mode: currentMode,
-                videoId: currentVideoId,
-                videoFilename: currentLocalFilename,
+                videoId: currentMode === 'youtube' ? currentVideoId : null,
+                videoPath: videoPathOrId, 
                 videoTitle: videoTitle,
                 exportedAt: new Date().toISOString(),
                 segments: segments
@@ -664,22 +512,19 @@
         }
 
         // --- UI Rendering ---
-
         function updateUI() {
             const curr = playback.getTime();
             document.getElementById('currentTime').innerText = formatTime(curr);
         }
 
-        function updateStatus(msg) {
-            document.getElementById('statusText').innerHTML = msg;
-        }
+        function updateStatus(msg) { document.getElementById('statusText').innerHTML = msg; }
 
         function renderSegments() {
             const list = document.getElementById('segmentList');
             list.innerHTML = '';
 
             if (segments.length === 0) {
-                list.innerHTML = '<div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press \'I\' to start.</div>';
+                list.innerHTML = '<div style="color: #666; font-style: italic; padding: 10px;">No segments yet. Press \'Z\' to start.</div>';
                 return;
             }
 
