@@ -1,6 +1,6 @@
 # YouTube Highlight Creator
 
-A simple, efficient tool to create highlight reels from YouTube videos.
+A simple tool to create highlight reels from YouTube or local videos.
 
 This project consists of two parts:
 1. **Web Editor (`video-editor.html`):** A browser-based interface to select segments of interest in YouTube videos. It allows to mark and adjust "In" and "Out" points, and export the timestamps as JSON.
@@ -13,7 +13,7 @@ This project consists of two parts:
 The process is designed to be fast and non-destructive.
 
 1.  **Open the Editor:** Launch `video-editor.html` in your browser.
-2.  **Mark Segments:** Load a YouTube URL. Use keyboard shortcuts to mark the start (`I`) and end (`O`) of plays/actions.
+2.  **Mark Segments:** Load a YouTube URL or a local video. Use keyboard shortcuts to mark the start (`Z`) and end (`X`) of plays/actions.
 3.  **Refine:** Use the on-screen "Nudge" buttons to adjust the timing by 0.5s if you missed the exact frame.
 4.  **Export:** Click "Download JSON" to save your work.
 5.  **Process:** Point the Python script at the folder containing your JSON files. It will automatically download and stitch the video.
@@ -45,16 +45,17 @@ Then open `http://localhost:8000/video-editor.html` in your browser.
 | Key | Action |
 | :--- | :--- |
 | **Space** | Play / Pause |
-| **I** | Mark **IN** point (Start of highlight) |
-| **O** | Mark **OUT** point (End of highlight) |
+| **Z** | Mark **IN** point (Start of highlight) |
+| **X** | Mark **OUT** point (End of highlight) |
 | **Backspace** | Cancel current recording OR Delete last saved clip |
-| **Left / Right Arrow** | Seek backward/forward 5 seconds |
+| **Left / Right Arrow** | Seek backward/forward 2 seconds |
+| **UP / Down Arrow** | Seek backward/forward 5 seconds |
 
 ## 🎞️ Generating the Video
 
 Once you have one or more JSON files exported from the web tool:
 
-1.  Place your JSON files in a folder (e.g., `Season_Highlights`).
+1.  Place your JSON files in a folder (e.g., `Season_Highlights`). If some of the videos are local videos, they need to be in the same folder as the JSON file.
 2.  Run the script pointing to that folder:
 
 ```bash
