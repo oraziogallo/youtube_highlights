@@ -44,7 +44,7 @@ def main():
                     # Detect mode (default to youtube if missing)
                     mode = data.get('mode', 'youtube')
                     video_id = data.get('videoId')
-                    video_filename = data.get('videoFilename')
+                    video_filename = data.get('videoPath')
                     video_title = data.get('videoTitle', 'unknown')
                     
                     for seg in data.get('segments', []):
